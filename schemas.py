@@ -1,48 +1,93 @@
 """
-Database Schemas
+Database Schemas for EZBuilds
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model maps to a MongoDB collection using the lowercased
+class name as the collection name.
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Examples:
+- Item -> "item"
+- StaffMember -> "staffmember"
+- BlogPost -> "blogpost"
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
+from pydantic import BaseModel, Field, HttpUrl
+from datetime import datetime
 
-# Example schemas (replace with your own):
+# Core domain schemas
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+class Item(BaseModel):
+    name: str = Field(..., description="Item name")
+    price: float = Field(..., ge=0, description="Price in game currency")
+    category: Optional[str] = Field(None, description="Category like blocks, tools, etc.")
+    description: Optional[str] = Field(None, description="Optional short description")
+    image_url: Optional[HttpUrl] = Field(None, description="Optional image for the item")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+class StaffMember(BaseModel):
+    username: str = Field(..., description="Minecraft username")
+    role: str = Field(..., description="Team role: Content, Mod, Admin, Owner")
+    team: str = Field(..., description="Team category e.g. Moderation, Content, Development")
+    since: datetime = Field(default_factory=datetime.utcnow, description="Joined date/time")
+    avatar_url: Optional[HttpUrl] = Field(None, description="Optional custom skin/face render URL")
+    active: bool = Field(True, description="Active staff member")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class VoteLink(BaseModel):
+    name: str = Field(..., description="Name of the vote site")
+    url: HttpUrl = Field(..., description="Voting URL")
+    description: Optional[str] = Field(None, description="Short helper text")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Event(BaseModel):
+    title: str
+    description: str
+    starts_at: datetime
+    ends_at: Optional[datetime] = None
+    reward: Optional[str] = Field(None, description="Role/Coupon or other reward")
+    banner_url: Optional[HttpUrl] = None
+    active: bool = True
+
+class BlogPost(BaseModel):
+    title: str
+    content: str
+    author: str
+    tags: List[str] = []
+    image_url: Optional[HttpUrl] = None
+    published: bool = True
+
+class Application(BaseModel):
+    applicant_discord_id: str
+    applicant_name: str
+    role_applied: str
+    motivation: str
+    status: str = Field("pending", description="pending|accepted|rejected")
+
+class StatSummary(BaseModel):
+    online_players: int = 0
+    total_players: int = 0
+    total_money: float = 0
+    tps: float = 20.0
+    gamemode: str = "Citybuild"
+
+class PlayerStat(BaseModel):
+    username: str
+    money: float = 0
+    playtime_hours: float = 0
+    last_seen: Optional[datetime] = None
+
+class Announcement(BaseModel):
+    title: str
+    message: str
+    visibility: str = Field("public", description="public|staff")
+
+class StaffMeeting(BaseModel):
+    title: str
+    scheduled_for: datetime
+    description: Optional[str] = None
+    attendees: List[str] = []
+
+class UserAccount(BaseModel):
+    discord_id: str
+    username: str
+    avatar: Optional[str] = None
+    roles: List[str] = Field(default_factory=lambda: ["player"], description="player, staff, mod, admin, owner")
+    can_post_blog: bool = False
+    can_manage_staff: bool = False
